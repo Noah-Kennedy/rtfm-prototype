@@ -14,10 +14,19 @@ use f3::hal::gpio::GpioExt;
 use f3::hal::rcc::RccExt;
 use f3::hal::stm32f30x;
 use f3::led::Leds;
-use rtfm::cyccnt::{Instant, U32Ext};
+use rtfm::cyccnt::{Instant, U32Ext, CYCCNT};
+use rtfm::Monotonic;
 
-const LED_PERIOD: u32 = 2_000_000;
-const LED_ON_TIME: u32 = 1_000_000;
+// const LED_PERIOD: u32 = 2_000_000;
+// const LED_ON_TIME: u32 = 1_000_000;
+
+const LED_PERIOD_MILLIS: u32 = 1_000;
+const LED_ON_TIME_MILLIS: u32 = 100;
+
+const CYC_PER_MILLI: u32 = 36_00;
+
+const LED_PERIOD_CYC: u32 = LED_PERIOD_MILLIS * CYC_PER_MILLI;
+const LED_ON_TIME_CYC: u32 = LED_ON_TIME_MILLIS * CYC_PER_MILLI;
 
 #[rtfm::app(device = stm32f30x, monotonic = rtfm::cyccnt::CYCCNT)]
 const APP: () = {
@@ -44,7 +53,7 @@ const APP: () = {
         cx.schedule.blink_led(now).unwrap();
 
         // schedule led turn off to occur after our duty period
-        cx.schedule.turn_off_led(now + LED_ON_TIME.cycles()).unwrap();
+        cx.schedule.turn_off_led(now + LED_ON_TIME_CYC.cycles()).unwrap();
 
         // get peripherals
         let board_peripherals = stm32f30x::Peripherals::take().unwrap();
@@ -71,15 +80,13 @@ const APP: () = {
     fn blink_led(cx: blink_led::Context) {
         // reschedule this task
         // this is done with the scheduled time rather than current clock time, preventing drift.
-        cx.schedule.blink_led(cx.scheduled + LED_PERIOD.cycles()).unwrap();
+        cx.schedule.blink_led(cx.scheduled + LED_PERIOD_CYC.cycles()).unwrap();
 
         // grab leds
         let leds: &mut Leds = cx.resources.leds;
 
         // turn on leds
-        for i in 0..leds.len() {
-            leds[i].on();
-        }
+        set_leds(leds, true);
     }
 
     /// Turns the LED off.
@@ -89,15 +96,13 @@ const APP: () = {
     fn turn_off_led(cx: turn_off_led::Context) {
         // reschedule this task
         // this is done with the scheduled time rather than current clock time, preventing drift.
-        cx.schedule.turn_off_led(cx.scheduled + LED_PERIOD.cycles()).unwrap();
+        cx.schedule.turn_off_led(cx.scheduled + LED_PERIOD_CYC.cycles()).unwrap();
 
         // grab leds
         let leds: &mut Leds = cx.resources.leds;
 
         // turn off leds
-        for i in 0..leds.len() {
-            leds[i].off();
-        }
+        set_leds(leds, false);
     }
 
     /// Declare free interrupts
@@ -108,3 +113,17 @@ const APP: () = {
         fn CAN_RX2();
     }
 };
+
+fn set_leds(leds: &mut Leds, val: bool) {
+    for led in leds.iter_mut() {
+        set_led(led, val)
+    }
+}
+
+fn set_led(led: &mut f3::led::Led, val: bool) {
+    if val {
+        led.on();
+    } else {
+        led.off()
+    }
+}

@@ -5,18 +5,16 @@ authors = ["noah <nomaxx117@gmail.com>"]
 edition = "2018"
 
 [profile.release]
+codegen-units = 1
 lto = "fat"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+opt-level = 3
+debug-assertions = true
 
 [dependencies.cortex-m]
 version = "0.6.2"
 
 [dependencies.cortex-m-rt]
 version = "0.6.12"
-
-#[dependencies.stm32f3]
-#features = ["stm32f303", "rt"]
-#version = "0.7.1"
 
 [dependencies.cortex-m-rtfm]
 version = "0.5.1"
